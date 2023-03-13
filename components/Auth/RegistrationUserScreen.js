@@ -64,6 +64,7 @@ export default class RegistrationUserScreenComponent extends Component {
 
       appleRegisterEmail: "",
       appleRegisterEmail_error: false,
+      apple_id: "",
     };
   }
   handleForm = (key, value) => {
@@ -121,116 +122,90 @@ export default class RegistrationUserScreenComponent extends Component {
   };
 
   DizainerRegisterForApple = async () => {
-    const { name, surname, diplom_photo, i_agree, role_id } = this.state;
+    const { name, surname, apple_id, i_agree, appleRegisterEmail, role_id } =
+      this.state;
 
+    this.form_data.append("apple_id", apple_id);
+    this.form_data.append("email", appleRegisterEmail);
     this.form_data.append("name", name);
     this.form_data.append("surname", surname);
     this.form_data.append("role_id", role_id);
     this.form_data.append("i_agree", i_agree);
 
-    var requestOptions = {
+    let requestOptions = {
       method: "POST",
       headers: { "Content-Type": "multipart/form-data" },
       body: this.form_data,
       redirect: "follow",
     };
 
-    await fetch(`${APP_URL}DizainerRegister`, requestOptions)
+    await fetch(`${APP_URL}DizainerRegisterForApple`, requestOptions)
       .then((response) => response.json())
       .then((res) => {
         console.log(res);
-        if (res.status === false && res.message == "phone arledy exist") {
+
+        // if (res.success === false) {
+        if (res.hasOwnProperty("name")) {
           this.setState({
-            phone_exist: true,
+            name_error: true,
           });
         } else {
           this.setState({
-            phone_exist: false,
+            name_error: false,
           });
         }
-        if (res.success === false && res.message == "Validation errors") {
-          if (res.data.hasOwnProperty("name")) {
-            this.setState({
-              name_error: true,
-            });
-          } else {
-            this.setState({
-              name_error: false,
-            });
-          }
 
-          if (res.data.hasOwnProperty("surname")) {
-            this.setState({
-              surname_error: true,
-            });
-          } else {
-            this.setState({
-              surname_error: false,
-            });
-          }
-
-          if (res.data.hasOwnProperty("phone")) {
-            this.setState({
-              phone_error: true,
-            });
-          } else {
-            this.setState({
-              phone_error: false,
-            });
-          }
-
-          if (res.data.hasOwnProperty("password")) {
-            this.setState({
-              password_error: true,
-            });
-          } else {
-            this.setState({
-              password_error: false,
-            });
-          }
-
-          if (res.data.hasOwnProperty("password_confirmation")) {
-            this.setState({
-              password_confirmation_error: true,
-            });
-          } else {
-            this.setState({
-              password_confirmation_error: false,
-            });
-          }
-
-          if (res.data.hasOwnProperty("diplom_photo")) {
-            this.setState({
-              diplom_photo_error: true,
-            });
-          } else {
-            this.setState({
-              diplom_photo_error: false,
-            });
-          }
-
-          if (res.data.hasOwnProperty("selfi_photo")) {
-            this.setState({
-              selfi_photo_error: true,
-            });
-          } else {
-            this.setState({
-              selfi_photo_error: false,
-            });
-          }
-
-          return false;
-        } else if (res.status === false) {
-          if (res.message == "i_agree required true") {
-            this.setState({
-              i_agree_error: true,
-            });
-          } else {
-            this.setState({
-              i_agree_error: true,
-            });
-          }
+        if (res.hasOwnProperty("surname")) {
+          this.setState({
+            surname_error: true,
+          });
+        } else {
+          this.setState({
+            surname_error: false,
+          });
         }
+
+        if (res.hasOwnProperty("apple_id")) {
+          this.setState({
+            appleRegisterEmail_error: true,
+          });
+        } else {
+          this.setState({
+            appleRegisterEmail_error: false,
+          });
+        }
+        if (res.hasOwnProperty("email")) {
+          this.setState({
+            appleRegisterEmail_error: true,
+          });
+        } else {
+          this.setState({
+            appleRegisterEmail_error: false,
+          });
+        }
+        if (res.hasOwnProperty("diplom_photo")) {
+          this.setState({
+            diplom_photo_error: true,
+          });
+        } else {
+          this.setState({
+            diplom_photo_error: false,
+          });
+        }
+
+        // return false;
+        // }
+        // else if (res.status === false) {
+        if (res.message == "i_agree required true") {
+          this.setState({
+            i_agree_error: true,
+          });
+        } else {
+          this.setState({
+            i_agree_error: true,
+          });
+        }
+        // }
         if (res.status === true) {
           this.props.navigation.navigate("LoginScreen");
         }
@@ -258,7 +233,7 @@ export default class RegistrationUserScreenComponent extends Component {
     this.form_data.append("role_id", role_id);
     this.form_data.append("i_agree", i_agree);
 
-    var requestOptions = {
+    let requestOptions = {
       method: "POST",
       headers: { "Content-Type": "multipart/form-data" },
       body: this.form_data,
@@ -448,19 +423,25 @@ export default class RegistrationUserScreenComponent extends Component {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      console.log(credential);
+      // console.log(credential);
       this.setState({ authTokenApple: credential });
 
       const decoded = jwtDecode(credential.identityToken);
       const current = Date.now() / 1000;
-      this.setState({ appleRegisterEmail: decoded.email });
+      this.setState({
+        appleRegisterEmail: decoded.email,
+        apple_id: decoded.sub,
+        appleRegisterEmail_error: false,
+      });
+
+      console.log(decoded);
     } catch (e) {
       // if (e.code === "ERR_REQUEST_CANCELED") {
       //   // handle that the user canceled the sign-in flow
       // } else {
       //   // handle other errors
       // }
-      console.log(e);
+      console.log(e, "error");
     }
   };
 
@@ -608,6 +589,9 @@ export default class RegistrationUserScreenComponent extends Component {
                     : { borderColor: "#F5F5F5" },
                 ]}
                 value={this.state.surname}
+                onChangeText={(e) =>
+                  this.setState({ surname: e, surname_error: false })
+                }
               />
             </View>
             {Platform.OS === "ios" ? (
@@ -630,23 +614,46 @@ export default class RegistrationUserScreenComponent extends Component {
                 >
                   AppleID*
                 </Text>
-                <TextInput
-                  underlineColorAndroid="transparent"
-                  editable={false}
-                  style={[
-                    {
-                      borderWidth: 1,
-                      padding: 10,
-                      width: "85%",
-                      borderRadius: 5,
-                      marginLeft: 25,
-                    },
-                    this.state.appleRegisterEmail_error
-                      ? { borderColor: "red" }
-                      : { borderColor: "#F5F5F5" },
-                  ]}
-                  value={this.state.appleRegisterEmail}
-                />
+
+                {this.state.appleAuthAvailable && this.state.authTokenApple && (
+                  <TextInput
+                    underlineColorAndroid="transparent"
+                    editable={false}
+                    style={[
+                      {
+                        borderWidth: 1,
+                        padding: 10,
+                        width: "85%",
+                        borderRadius: 5,
+                        marginLeft: 25,
+                      },
+                      this.state.appleRegisterEmail_error
+                        ? { borderColor: "red" }
+                        : { borderColor: "#F5F5F5" },
+                    ]}
+                    value={this.state.appleRegisterEmail}
+                  />
+                )}
+                {this.state.appleAuthAvailable &&
+                  !this.state.authTokenApple && (
+                    <TouchableOpacity
+                      onPress={() => this.register()}
+                      style={[
+                        {
+                          borderWidth: 1,
+                          padding: 10,
+                          width: "85%",
+                          borderRadius: 5,
+                          marginLeft: 25,
+                          borderColor: "#F5F5F5",
+                          height: 40,
+                        },
+                        this.state.appleRegisterEmail_error
+                          ? { borderColor: "red" }
+                          : { borderColor: "#F5F5F5" },
+                      ]}
+                    />
+                  )}
               </View>
             ) : (
               <View>
@@ -1009,7 +1016,7 @@ export default class RegistrationUserScreenComponent extends Component {
                     marginVertical: 25,
                   }}
                   onPress={async () => {
-                    await this.DizainerRegisterApi();
+                    await this.DizainerRegisterForApple();
                   }}
                 >
                   <BlueButton name="Зарегистрироваться" />
@@ -1035,21 +1042,6 @@ export default class RegistrationUserScreenComponent extends Component {
               )}
             </View>
           </View>
-          {this.state.appleAuthAvailable &&
-            Platform.OS == "ios" &&
-            !this.state.authTokenApple && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                }
-                buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                }
-                cornerRadius={5}
-                style={styles.appleButton}
-                onPress={() => this.register()}
-              />
-            )}
         </ScrollView>
       </SafeAreaView>
     );

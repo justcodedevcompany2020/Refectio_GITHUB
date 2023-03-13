@@ -180,6 +180,7 @@ export default class GhostPageComponent extends React.Component {
     })
       .then((response) => response.json())
       .then((res) => {
+        console.log(res);
         if (res.status === true) {
           let data = res.data.data.data;
           // console.log(data);
