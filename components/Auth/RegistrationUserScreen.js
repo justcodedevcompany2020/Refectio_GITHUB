@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
+  Platform,
 } from "react-native";
 import ArrowGrayComponent from "../../assets/image/ArrowGray";
 import Svg, { Path, Rect } from "react-native-svg";
@@ -15,6 +16,8 @@ import BlueButton from "../Component/Buttons/BlueButton";
 import MaskInput from "react-native-mask-input";
 import * as ImagePicker from "expo-image-picker";
 import { APP_URL, APP_IMAGE_URL } from "@env";
+import * as AppleAuthentication from "expo-apple-authentication";
+import jwtDecode from "jwt-decode";
 
 export default class RegistrationUserScreenComponent extends Component {
   constructor(props) {
@@ -54,6 +57,13 @@ export default class RegistrationUserScreenComponent extends Component {
       accessToken: null,
 
       value_length: "",
+
+      authTokenApple: null,
+
+      appleAuthAvailable: false,
+
+      appleRegisterEmail: "",
+      appleRegisterEmail_error: false,
     };
   }
   handleForm = (key, value) => {
@@ -110,7 +120,124 @@ export default class RegistrationUserScreenComponent extends Component {
     });
   };
 
-  DizainerRegisterApi = async (request, response, promptAsync) => {
+  DizainerRegisterForApple = async () => {
+    const { name, surname, diplom_photo, i_agree, role_id } = this.state;
+
+    this.form_data.append("name", name);
+    this.form_data.append("surname", surname);
+    this.form_data.append("role_id", role_id);
+    this.form_data.append("i_agree", i_agree);
+
+    var requestOptions = {
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      body: this.form_data,
+      redirect: "follow",
+    };
+
+    await fetch(`${APP_URL}DizainerRegister`, requestOptions)
+      .then((response) => response.json())
+      .then((res) => {
+        console.log(res);
+        if (res.status === false && res.message == "phone arledy exist") {
+          this.setState({
+            phone_exist: true,
+          });
+        } else {
+          this.setState({
+            phone_exist: false,
+          });
+        }
+        if (res.success === false && res.message == "Validation errors") {
+          if (res.data.hasOwnProperty("name")) {
+            this.setState({
+              name_error: true,
+            });
+          } else {
+            this.setState({
+              name_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("surname")) {
+            this.setState({
+              surname_error: true,
+            });
+          } else {
+            this.setState({
+              surname_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("phone")) {
+            this.setState({
+              phone_error: true,
+            });
+          } else {
+            this.setState({
+              phone_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("password")) {
+            this.setState({
+              password_error: true,
+            });
+          } else {
+            this.setState({
+              password_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("password_confirmation")) {
+            this.setState({
+              password_confirmation_error: true,
+            });
+          } else {
+            this.setState({
+              password_confirmation_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("diplom_photo")) {
+            this.setState({
+              diplom_photo_error: true,
+            });
+          } else {
+            this.setState({
+              diplom_photo_error: false,
+            });
+          }
+
+          if (res.data.hasOwnProperty("selfi_photo")) {
+            this.setState({
+              selfi_photo_error: true,
+            });
+          } else {
+            this.setState({
+              selfi_photo_error: false,
+            });
+          }
+
+          return false;
+        } else if (res.status === false) {
+          if (res.message == "i_agree required true") {
+            this.setState({
+              i_agree_error: true,
+            });
+          } else {
+            this.setState({
+              i_agree_error: true,
+            });
+          }
+        }
+        if (res.status === true) {
+          this.props.navigation.navigate("LoginScreen");
+        }
+      });
+  };
+
+  DizainerRegisterApi = async () => {
     const {
       name,
       surname,
@@ -295,6 +422,48 @@ export default class RegistrationUserScreenComponent extends Component {
     });
   };
 
+  componentDidMount() {
+    // const { navigation } = this.props;
+    // this.focusListener = navigation.addListener("focus", () => {
+    this.checkAvailable();
+    // });
+  }
+
+  // componentWillUnmount() {
+  //   if (this.focusListener) {
+  //     this.focusListener();
+  //   }
+  // }
+  checkAvailable = async () => {
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    await this.setState({ appleAuthAvailable: isAvailable });
+    console.log(isAvailable, "isAvailable");
+  };
+
+  register = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      console.log(credential);
+      this.setState({ authTokenApple: credential });
+
+      const decoded = jwtDecode(credential.identityToken);
+      const current = Date.now() / 1000;
+      this.setState({ appleRegisterEmail: decoded.email });
+    } catch (e) {
+      // if (e.code === "ERR_REQUEST_CANCELED") {
+      //   // handle that the user canceled the sign-in flow
+      // } else {
+      //   // handle other errors
+      // }
+      console.log(e);
+    }
+  };
+
   render() {
     return (
       <SafeAreaView
@@ -439,169 +608,207 @@ export default class RegistrationUserScreenComponent extends Component {
                     : { borderColor: "#F5F5F5" },
                 ]}
                 value={this.state.surname}
-                onChangeText={(value) => {
-                  this.setState({ surname: value, surname_error: false });
-                }}
               />
             </View>
-            <View>
-              <Text
-                style={[
-                  {
-                    fontFamily: "Poppins_500Medium",
-                    lineHeight: 23,
-                    fontSize: 15,
-                    marginLeft: 25,
-                    marginTop: 27,
-                    marginBottom: 5,
-                  },
-                  this.state.phone_error || this.state.phone_exist
-                    ? { color: "red" }
-                    : { color: "#5B5B5B" },
-                ]}
-              >
-                {this.state.phone_exist
-                  ? "Этот телефонный номер уже\nзарегистрирован за другим пользователем"
-                  : "Номер телефона*"}
-              </Text>
+            {Platform.OS === "ios" ? (
+              <View>
+                <Text
+                  style={[
+                    {
+                      fontFamily: "Poppins_400Regular",
+                      lineHeight: 23,
+                      fontSize: 15,
+                      color: "#5B5B5B",
+                      marginLeft: 25,
+                      marginTop: 27,
+                      marginBottom: 5,
+                    },
+                    this.state.appleRegisterEmail_error
+                      ? { color: "red" }
+                      : { color: "#5B5B5B" },
+                  ]}
+                >
+                  AppleID*
+                </Text>
+                <TextInput
+                  underlineColorAndroid="transparent"
+                  editable={false}
+                  style={[
+                    {
+                      borderWidth: 1,
+                      padding: 10,
+                      width: "85%",
+                      borderRadius: 5,
+                      marginLeft: 25,
+                    },
+                    this.state.appleRegisterEmail_error
+                      ? { borderColor: "red" }
+                      : { borderColor: "#F5F5F5" },
+                  ]}
+                  value={this.state.appleRegisterEmail}
+                />
+              </View>
+            ) : (
+              <View>
+                <Text
+                  style={[
+                    {
+                      fontFamily: "Poppins_500Medium",
+                      lineHeight: 23,
+                      fontSize: 15,
+                      marginLeft: 25,
+                      marginTop: 27,
+                      marginBottom: 5,
+                    },
+                    this.state.phone_error || this.state.phone_exist
+                      ? { color: "red" }
+                      : { color: "#5B5B5B" },
+                  ]}
+                >
+                  {this.state.phone_exist
+                    ? "Этот телефонный номер уже\nзарегистрирован за другим пользователем"
+                    : "Номер телефона*"}
+                </Text>
 
-              <MaskInput
-                underlineColorAndroid="transparent"
-                keyboardType="phone-pad"
-                placeholder="+7 (975) 991-99-99"
-                style={[
-                  {
-                    borderWidth: 1,
-                    padding: 10,
-                    width: "85%",
-                    borderRadius: 5,
-                    marginLeft: 25,
-                  },
-                  this.state.phone_error
-                    ? { borderColor: "red" }
-                    : { borderColor: "#F5F5F5" },
-                ]}
-                mask={[
-                  "+",
-                  "7",
-                  " ",
-                  "(",
-                  /\d/,
-                  /\d/,
-                  /\d/,
-                  ")",
-                  " ",
-                  /\d/,
-                  /\d/,
-                  /\d/,
-                  "-",
-                  /\d/,
-                  /\d/,
-                  "-",
-                  /\d/,
-                  /\d/,
-                ]}
-                value={this.state.phone}
-                onChangeText={(masked) => {
-                  this.setState({
-                    value_length: masked,
-                    phone: masked,
-                    phone_error: false,
-                    phone_exist: false,
-                  });
-                }}
-              />
-            </View>
-
-            <View>
-              <Text
-                style={[
-                  {
-                    fontFamily: "Poppins_500Medium",
-                    lineHeight: 23,
-                    fontSize: 15,
-                    color: "#5B5B5B",
-                    marginLeft: 25,
-                    marginTop: 27,
-                    marginBottom: 5,
-                  },
-                  this.state.password_error
-                    ? { color: "red" }
-                    : { color: "#5B5B5B" },
-                ]}
-              >
-                Пароль (минимум 6 символов)*
-              </Text>
-              <TextInput
-                underlineColorAndroid="transparent"
-                secureTextEntry={true}
-                password={true}
-                autoCorrect={false}
-                style={[
-                  {
-                    borderWidth: 1,
-                    padding: 10,
-                    width: "85%",
-                    borderRadius: 5,
-                    marginLeft: 25,
-                  },
-                  this.state.password_error
-                    ? { borderColor: "red" }
-                    : { borderColor: "#F5F5F5" },
-                ]}
-                value={this.state.password}
-                onChangeText={(value) => {
-                  this.setState({ password: value, password_error: false });
-                }}
-              />
-            </View>
-
-            <View>
-              <Text
-                style={[
-                  {
-                    fontFamily: "Poppins_500Medium",
-                    lineHeight: 23,
-                    fontSize: 15,
-                    marginLeft: 25,
-                    marginTop: 27,
-                    marginBottom: 5,
-                  },
-                  this.state.password_confirmation_error
-                    ? { color: "red" }
-                    : { color: "#5B5B5B" },
-                ]}
-              >
-                Повторите пароль*
-              </Text>
-              <TextInput
-                underlineColorAndroid="transparent"
-                secureTextEntry={true}
-                password={true}
-                autoCorrect={false}
-                style={[
-                  {
-                    borderWidth: 1,
-                    borderColor: "#F5F5F5",
-                    padding: 10,
-                    width: "85%",
-                    borderRadius: 5,
-                    marginLeft: 25,
-                  },
-                  this.state.password_confirmation_error
-                    ? { borderColor: "red" }
-                    : { borderColor: "#F5F5F5" },
-                ]}
-                value={this.state.password_confirmation}
-                onChangeText={(value) => {
-                  this.setState({
-                    password_confirmation: value,
-                    password_confirmation_error: false,
-                  });
-                }}
-              />
-            </View>
-
+                <MaskInput
+                  underlineColorAndroid="transparent"
+                  keyboardType="phone-pad"
+                  placeholder="+7 (975) 991-99-99"
+                  style={[
+                    {
+                      borderWidth: 1,
+                      padding: 10,
+                      width: "85%",
+                      borderRadius: 5,
+                      marginLeft: 25,
+                    },
+                    this.state.phone_error
+                      ? { borderColor: "red" }
+                      : { borderColor: "#F5F5F5" },
+                  ]}
+                  mask={[
+                    "+",
+                    "7",
+                    " ",
+                    "(",
+                    /\d/,
+                    /\d/,
+                    /\d/,
+                    ")",
+                    " ",
+                    /\d/,
+                    /\d/,
+                    /\d/,
+                    "-",
+                    /\d/,
+                    /\d/,
+                    "-",
+                    /\d/,
+                    /\d/,
+                  ]}
+                  value={this.state.phone}
+                  onChangeText={(masked) => {
+                    this.setState({
+                      value_length: masked,
+                      phone: masked,
+                      phone_error: false,
+                      phone_exist: false,
+                    });
+                  }}
+                />
+              </View>
+            )}
+            {Platform.OS !== "ios" && (
+              <View>
+                <Text
+                  style={[
+                    {
+                      fontFamily: "Poppins_500Medium",
+                      lineHeight: 23,
+                      fontSize: 15,
+                      color: "#5B5B5B",
+                      marginLeft: 25,
+                      marginTop: 27,
+                      marginBottom: 5,
+                    },
+                    this.state.password_error
+                      ? { color: "red" }
+                      : { color: "#5B5B5B" },
+                  ]}
+                >
+                  Пароль (минимум 6 символов)*
+                </Text>
+                <TextInput
+                  underlineColorAndroid="transparent"
+                  secureTextEntry={true}
+                  password={true}
+                  autoCorrect={false}
+                  style={[
+                    {
+                      borderWidth: 1,
+                      padding: 10,
+                      width: "85%",
+                      borderRadius: 5,
+                      marginLeft: 25,
+                    },
+                    this.state.password_error
+                      ? { borderColor: "red" }
+                      : { borderColor: "#F5F5F5" },
+                  ]}
+                  value={this.state.password}
+                  onChangeText={(value) => {
+                    this.setState({ password: value, password_error: false });
+                  }}
+                />
+              </View>
+            )}
+            {Platform.OS !== "ios" && (
+              <View>
+                <Text
+                  style={[
+                    {
+                      fontFamily: "Poppins_500Medium",
+                      lineHeight: 23,
+                      fontSize: 15,
+                      marginLeft: 25,
+                      marginTop: 27,
+                      marginBottom: 5,
+                    },
+                    this.state.password_confirmation_error
+                      ? { color: "red" }
+                      : { color: "#5B5B5B" },
+                  ]}
+                >
+                  Повторите пароль*
+                </Text>
+                <TextInput
+                  underlineColorAndroid="transparent"
+                  secureTextEntry={true}
+                  password={true}
+                  autoCorrect={false}
+                  style={[
+                    {
+                      borderWidth: 1,
+                      borderColor: "#F5F5F5",
+                      padding: 10,
+                      width: "85%",
+                      borderRadius: 5,
+                      marginLeft: 25,
+                    },
+                    this.state.password_confirmation_error
+                      ? { borderColor: "red" }
+                      : { borderColor: "#F5F5F5" },
+                  ]}
+                  value={this.state.password_confirmation}
+                  onChangeText={(value) => {
+                    this.setState({
+                      password_confirmation: value,
+                      password_confirmation_error: false,
+                    });
+                  }}
+                />
+              </View>
+            )}
             <View>
               <Text
                 style={[
@@ -656,7 +863,6 @@ export default class RegistrationUserScreenComponent extends Component {
                   />
                 )}
             </View>
-
             <View>
               <Text
                 style={[
@@ -797,25 +1003,53 @@ export default class RegistrationUserScreenComponent extends Component {
                 flexDirection: "row",
               }}
             >
-              <TouchableOpacity
-                style={{
-                  marginVertical: 25,
-                }}
-                onPress={async () => {
-                  if (
-                    this.state.value_length.length < 18 &&
-                    this.state.value_length !== ""
-                  ) {
-                    this.setState({ phone_error: true });
-                  } else {
+              {Platform.OS === "ios" ? (
+                <TouchableOpacity
+                  style={{
+                    marginVertical: 25,
+                  }}
+                  onPress={async () => {
                     await this.DizainerRegisterApi();
-                  }
-                }}
-              >
-                <BlueButton name="Зарегистрироваться" />
-              </TouchableOpacity>
+                  }}
+                >
+                  <BlueButton name="Зарегистрироваться" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={{
+                    marginVertical: 25,
+                  }}
+                  onPress={async () => {
+                    if (
+                      this.state.value_length.length < 18 &&
+                      this.state.value_length !== ""
+                    ) {
+                      this.setState({ phone_error: true });
+                    } else {
+                      await this.DizainerRegisterApi();
+                    }
+                  }}
+                >
+                  <BlueButton name="Зарегистрироваться" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
+          {this.state.appleAuthAvailable &&
+            Platform.OS == "ios" &&
+            !this.state.authTokenApple && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={5}
+                style={styles.appleButton}
+                onPress={() => this.register()}
+              />
+            )}
         </ScrollView>
       </SafeAreaView>
     );
@@ -838,5 +1072,11 @@ const styles = StyleSheet.create({
     marginTop: 22,
     flexDirection: "row",
     alignItems: "center",
+  },
+  appleButton: {
+    width: 50,
+    height: 50,
+    // borderRadius: 100,
+    alignSelf: "center",
   },
 });

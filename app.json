@@ -43,6 +43,9 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
+      ],
+      [
+        "expo-apple-authentication"
       ]
     ],
     "extra": {
@@ -50,6 +53,5 @@
         "projectId": "7c5daa52-ad38-46bd-8c67-2f71d9154219"
       }
     }
-   
   }
 }
